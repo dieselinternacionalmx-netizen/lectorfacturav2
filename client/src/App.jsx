@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react'
 import { getInvoices, scanInvoices, getBankTransactions, scanBankTransactions } from './api'
 import InvoiceTable from './components/InvoiceTable'
 import BankTable from './components/BankTable'
-import { RefreshCw, FileText, CreditCard } from 'lucide-react'
+import UploadInvoicesModal from './components/UploadInvoicesModal'
+import UploadBankDepositsModal from './components/UploadBankDepositsModal'
+import { RefreshCw, FileText, CreditCard, Upload } from 'lucide-react'
 import './App.css'
 import './modal_styles.css'
+import './upload_styles.css'
 
 function App() {
   const [view, setView] = useState('invoices') // 'invoices' | 'bank'
@@ -14,6 +17,8 @@ function App() {
   const [scanning, setScanning] = useState(false)
   const [agentFilter, setAgentFilter] = useState('')
   const [error, setError] = useState(null)
+  const [showUploadInvoices, setShowUploadInvoices] = useState(false)
+  const [showUploadDeposits, setShowUploadDeposits] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -92,14 +97,24 @@ function App() {
           </button>
         </div>
 
-        <button
-          className={`scan-button ${scanning ? 'scanning' : ''}`}
-          onClick={handleScan}
-          disabled={scanning}
-        >
-          <RefreshCw size={20} className={scanning ? 'spin' : ''} />
-          {scanning ? 'Escanear...' : (view === 'invoices' ? 'Escanear Facturas' : 'Escanear Banco')}
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="upload-button"
+            onClick={() => view === 'invoices' ? setShowUploadInvoices(true) : setShowUploadDeposits(true)}
+          >
+            <Upload size={20} />
+            {view === 'invoices' ? 'Subir Facturas' : 'Subir Depósitos'}
+          </button>
+
+          <button
+            className={`scan-button ${scanning ? 'scanning' : ''}`}
+            onClick={handleScan}
+            disabled={scanning}
+          >
+            <RefreshCw size={20} className={scanning ? 'spin' : ''} />
+            {scanning ? 'Escanear...' : (view === 'invoices' ? 'Escanear Facturas' : 'Escanear Banco')}
+          </button>
+        </div>
       </header>
 
       <main className="app-main">
@@ -152,6 +167,27 @@ function App() {
           )}
         </div>
       </main>
+
+      {/* Upload Modals */}
+      {showUploadInvoices && (
+        <UploadInvoicesModal
+          onClose={() => setShowUploadInvoices(false)}
+          onSuccess={() => {
+            setShowUploadInvoices(false);
+            loadData();
+          }}
+        />
+      )}
+
+      {showUploadDeposits && (
+        <UploadBankDepositsModal
+          onClose={() => setShowUploadDeposits(false)}
+          onSuccess={() => {
+            setShowUploadDeposits(false);
+            loadData();
+          }}
+        />
+      )}
     </div>
   )
 }
