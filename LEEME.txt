@@ -1,0 +1,23 @@
+# INSTRUCCIONES RÁPIDAS
+
+## 🚀 INICIAR EL SISTEMA
+1. Doble-click en: **INICIAR_SISTEMA.bat**
+2. Espera que se abra el navegador
+3. ¡Listo para usar!
+
+## 🛑 DETENER EL SISTEMA
+- Cierra todas las ventanas negras
+- O doble-click en: **DETENER_SISTEMA.bat**
+
+## 📄 AGREGAR FACTURAS
+1. Copia los PDFs a la carpeta: **FACTURAS_PDF**
+2. En el sistema, click en: **"Escanear Nuevos"**
+
+## 📊 EXPORTAR DATOS
+1. (Opcional) Selecciona un agente
+2. Click en: **"Exportar CSV"**
+3. Abre el archivo descargado con Excel
+
+---
+
+**¿Problemas?** Lee la guía completa: GUIA_INSTALACION.md
