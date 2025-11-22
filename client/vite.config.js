@@ -13,6 +13,11 @@ export default defineConfig({
       },
     },
   },
+  resolve: {
+    alias: {
+      'pdfjs-dist': 'pdfjs-dist/build/pdf',
+    },
+  },
   build: {
     target: 'esnext', // Support top-level await used by pdfjs-dist
     rollupOptions: {
