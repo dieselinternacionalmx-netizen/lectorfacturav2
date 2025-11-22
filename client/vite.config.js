@@ -15,6 +15,13 @@ export default defineConfig({
   },
   build: {
     target: 'esnext', // Support top-level await used by pdfjs-dist
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          pdfjs: ['pdfjs-dist']
+        }
+      }
+    }
   },
   optimizeDeps: {
     esbuildOptions: {
