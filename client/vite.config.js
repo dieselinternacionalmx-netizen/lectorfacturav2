@@ -15,7 +15,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'pdfjs-dist': 'pdfjs-dist/build/pdf',
+      'pdfjs-dist': 'pdfjs-dist/build/pdf.mjs',
     },
   },
   build: {
