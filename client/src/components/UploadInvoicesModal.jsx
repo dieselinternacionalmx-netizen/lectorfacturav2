@@ -91,7 +91,22 @@ export default function UploadInvoicesModal({ onClose, onSuccess }) {
                         <FileUploadZone onFilesSelected={handleFilesSelected} multiple={true} />
                     ) : (
                         <div className="space-y-4">
-                            <FileUploadProgress files={selectedFiles} onRemove={!uploading ? handleRemoveFile : null} />
+                            <FileUploadProgress
+                                files={selectedFiles}
+                                onRemove={!uploading ? handleRemoveFile : null}
+                            />
+
+                            {/* Debug Info for Errors */}
+                            {selectedFiles.some(f => f.error) && (
+                                <div className="mt-2 p-3 bg-red-900/20 rounded text-xs font-mono text-red-300 overflow-auto max-h-32">
+                                    <strong>Detalles del error:</strong>
+                                    <ul className="list-disc pl-4 mt-1">
+                                        {selectedFiles.filter(f => f.error).map((f, i) => (
+                                            <li key={i}>{f.name}: {f.error}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
 
                             {!uploading && (
                                 <FileUploadZone onFilesSelected={handleFilesSelected} multiple={true} />
