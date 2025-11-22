@@ -1,25 +1,14 @@
 import { supabase } from './supabase';
-import * as pdfjsLib from 'pdfjs-dist';
+
+// PDF.js will be loaded from CDN/local file in index.html
+// const pdfjsLib = window.pdfjsLib;
 
 // Configurar worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-
-/**
- * Extract text from PDF file
- */
-async function extractTextFromPDF(file) {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = '';
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(' ');
-        fullText += pageText + '\n';
+const pageText = textContent.items.map(item => item.str).join(' ');
+fullText += pageText + '\n';
     }
 
-    return fullText;
+return fullText;
 }
 
 /**
