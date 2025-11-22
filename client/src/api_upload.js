@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Configurar worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 /**
  * Extract text from PDF file
