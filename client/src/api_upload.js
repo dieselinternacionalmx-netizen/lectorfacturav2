@@ -22,7 +22,7 @@ async function extractTextFromPDF(file) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map(item => item.str).join(' ');
-        fullText += pageText + '\\n';
+        fullText += pageText + '\n';
     }
 
     return fullText;
@@ -36,18 +36,18 @@ function parseInvoiceData(text, filename) {
     let invoiceNumber = null;
     
     // Pattern 1: "Folio: A 30656" or "Folio: C 28295" -> extract just the numbers
-    const folioMatch = text.match(/Folio:\\s*[A-Z]?\\s*(\\d+)/i);
+    const folioMatch = text.match(/Folio:\s*[A-Z]?\s*(\d+)/i);
     if (folioMatch) {
         invoiceNumber = folioMatch[1];
     }
     
     // Fallback: Try to extract from filename if not found in text
     if (!invoiceNumber) {
-        const cfdiMatch = filename.match(/[_A](\\d{5,})/);
+        const cfdiMatch = filename.match(/[_A](\d{5,})/);
         if (cfdiMatch) {
             invoiceNumber = cfdiMatch[1];
         } else {
-            const numberMatch = filename.match(/(\\d{4,})/);
+            const numberMatch = filename.match(/(\d{4,})/);
             if (numberMatch) {
                 invoiceNumber = numberMatch[1];
             } else {
@@ -57,24 +57,24 @@ function parseInvoiceData(text, filename) {
     }
 
     // Extract date
-    const dateMatch = text.match(/(\\d{1,2}[-\\/]\\w{3}[-\\/]\\d{4})|(\\d{1,2}[-\\/]\\d{1,2}[-\\/]\\d{2,4})|(\\d{4}[-\\/]\\d{1,2}[-\\/]\\d{1,2})/);
+    const dateMatch = text.match(/(\d{1,2}[-\/]\w{3}[-\/]\d{4})|(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})|(\d{4}[-\/]\d{1,2}[-\/]\d{1,2})/);
     let date = dateMatch ? dateMatch[0] : null;
 
     // Normalize date to YYYY-MM-DD if possible
     if (date) {
         try {
             // Handle "23/Ene/2025" format
-            if (date.match(/\\d{1,2}[-\\/]\\w{3}[-\\/]\\d{4}/)) {
+            if (date.match(/\d{1,2}[-\/]\w{3}[-\/]\d{4}/)) {
                 const monthMap = {
                     'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04',
                     'may': '05', 'jun': '06', 'jul': '07', 'ago': '08',
                     'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
                 };
-                const parts = date.split(/[-\\/]/);
+                const parts = date.split(/[-\/]/);
                 const month = monthMap[parts[1].toLowerCase()];
                 date = `${parts[2]}-${month}-${parts[0].padStart(2, '0')}`;
             } else {
-                const parts = date.split(/[-\\/]/);
+                const parts = date.split(/[-\/]/);
                 if (parts[0].length === 4) {
                     // YYYY-MM-DD
                     date = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
@@ -90,37 +90,37 @@ function parseInvoiceData(text, filename) {
 
     // Extract agent - Pattern: "Agente: 09 - TEODORO"
     let agent = null;
-    const agenteMatch = text.match(/Agente:\\s*\\d+\\s*-\\s*([A-Z\\s]+)/i);
+    const agenteMatch = text.match(/Agente:\s*\d+\s*-\s*([A-Z\s]+)/i);
     if (agenteMatch) {
         agent = agenteMatch[1].trim();
     }
 
     // Extract client - Pattern: "Cliente: 9374 - ALMA ANGELICA SANCHEZ ROSAS"
-    const clienteMatch = text.match(/Cliente:\\s*\\d+\\s*-\\s*([^\\n\\r]+)/i);
+    const clienteMatch = text.match(/Cliente:\s*\d+\s*-\s*([^\n\r]+)/i);
     const client = clienteMatch ? clienteMatch[1].trim() : null;
 
     // Extract RFC - Look for RFC after "Datos del Cliente" section
     let rfc = null;
-    const rfcMatch = text.match(/Datos del Cliente:[\\s\\S]{0,300}RFC:\\s*([A-Z0-9]{12,13})/i);
+    const rfcMatch = text.match(/Datos del Cliente:[\s\S]{0,300}RFC:\s*([A-Z0-9]{12,13})/i);
     if (rfcMatch) {
         rfc = rfcMatch[1].trim();
     } else {
         // Fallback: Generic RFC search
-        const genericRfcMatch = text.match(/RFC:\\s*([A-Z0-9]{12,13})/i);
+        const genericRfcMatch = text.match(/RFC:\s*([A-Z0-9]{12,13})/i);
         if (genericRfcMatch) {
             rfc = genericRfcMatch[1].trim();
         }
     }
 
     // Extract amounts - Pattern: "Subtotal: $4,510.00" or "$4,510.00"
-    const subtotalMatch = text.match(/Subtotal:\\s*\\$?\\s*([0-9,]+\\.?\\d{0,2})/i);
+    const subtotalMatch = text.match(/Subtotal:\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
     const subtotal = subtotalMatch ? parseFloat(subtotalMatch[1].replace(/,/g, '')) : 0;
 
-    const ivaMatch = text.match(/IVA:\\s*\\$?\\s*([0-9,]+\\.?\\d{0,2})/i);
+    const ivaMatch = text.match(/IVA:\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
     const iva = ivaMatch ? parseFloat(ivaMatch[1].replace(/,/g, '')) : 0;
 
-    const totalMatch = text.match(/Total:\\s*\\$?\\s*([0-9,]+\\.?\\d{0,2})/i);
-    const total = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : subtotal + iva;
+    const totalMatch = text.match(/Total:\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
+    const total = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) :  subtotal + iva;
 
     return {
         invoice_number: invoiceNumber,
@@ -139,14 +139,14 @@ function parseInvoiceData(text, filename) {
  */
 function parseBankTransactions(text) {
     const transactions = [];
-    const lines = text.split('\\n');
+    const lines = text.split('\n');
 
     for (const line of lines) {
         const trimmedLine = line.trim();
         if (!trimmedLine) continue;
 
         // Date
-        const dateMatch = trimmedLine.match(/(\\d{1,2}\\/\\d{1,2}\\/\\d{4})/);
+        const dateMatch = trimmedLine.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
         if (!dateMatch) continue;
 
         // Convert DD/MM/YYYY to YYYY-MM-DD
@@ -154,20 +154,20 @@ function parseBankTransactions(text) {
         const date = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 
         // Description
-        const descMatch = trimmedLine.match(/(SPEI|TRANSFERENCIA|DEPOSITO)[^\\$]*/i);
+        const descMatch = trimmedLine.match(/(SPEI|TRANSFERENCIA|DEPOSITO)[^\$]*/i);
         const description = descMatch ? descMatch[0].trim() : '';
 
         // Amount
-        const amountMatch = trimmedLine.match(/\\$\\s*([0-9,]+\\.?\\d{0,2})/);
+        const amountMatch = trimmedLine.match(/\$\s*([0-9,]+\.?\d{0,2})/);
         const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
 
         if (amount > 0) {
             // Beneficiary
-            const benefMatch = trimmedLine.match(/(?:BENEFICIARIO|BENEFICIARY):[\\s]+([^\\n]+)/i);
+            const benefMatch = trimmedLine.match(/(?:BENEFICIARIO|BENEFICIARY)[:\s]+([^\n]+)/i);
             const beneficiary = benefMatch ? benefMatch[1].trim() : null;
 
             // Tracking Key
-            const trackingMatch = trimmedLine.match(/(?:CLAVE|TRACKING|KEY):[\\s]+([A-Z0-9]+)/i);
+            const trackingMatch = trimmedLine.match(/(?:CLAVE|TRACKING|KEY)[:\s]+([A-Z0-9]+)/i);
             const tracking_key = trackingMatch ? trackingMatch[1].trim() : null;
 
             // Agent inference
