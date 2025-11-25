@@ -141,16 +141,19 @@ export default function InvoiceTable({ data, agentFilter, setAgentFilter, onData
             {
                 header: 'Archivo',
                 accessorKey: 'filename',
+                cell: info => info.getValue() || '',
                 size: 200,
             },
             {
                 header: 'Factura #',
                 accessorKey: 'invoice_number',
+                cell: info => info.getValue() || '',
                 size: 120,
             },
             {
                 header: 'Fecha',
                 accessorKey: 'date',
+                cell: info => info.getValue() || '',
                 size: 120,
             },
             {
@@ -162,13 +165,15 @@ export default function InvoiceTable({ data, agentFilter, setAgentFilter, onData
             {
                 header: 'RFC',
                 accessorKey: 'rfc',
+                cell: info => info.getValue() || '',
                 size: 150,
             },
             {
                 header: 'Agente',
                 accessorKey: 'agent',
                 cell: info => {
-                    const name = info.getValue();
+                    const name = info.getValue() || '';
+                    if (!name) return <span className="text-gray-500">-</span>;
                     const style = getAgentColor(name);
                     return (
                         <span
