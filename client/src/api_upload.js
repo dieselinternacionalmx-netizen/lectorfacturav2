@@ -88,9 +88,9 @@ function parseInvoiceData(text, filename) {
         }
     }
 
-    // Extract agent - Pattern: "Agente: 09 - TEODORO"
+    // Extract agent - Pattern: "Agente: 09 - TEODORO" or just "TEODORO"
     let agent = null;
-    const agenteMatch = text.match(/Agente:\s*\d+\s*-\s*([A-Z\s]+)/i);
+    const agenteMatch = text.match(/Agente:\s*\d*\s*-?\s*([A-Z][A-Z\s]+)/i);
     if (agenteMatch) {
         agent = agenteMatch[1].trim();
     }
@@ -112,11 +112,11 @@ function parseInvoiceData(text, filename) {
         }
     }
 
-    // Extract amounts - Pattern: "Subtotal: $4,510.00" or "$4,510.00"
-    const subtotalMatch = text.match(/Subtotal:\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
+    // Extract amounts - More flexible patterns
+    const subtotalMatch = text.match(/(?:Subtotal|SUBTOTAL|Sub-total|Sub total)[:\s]*\$?\s*([0-9,]+\.?\d{0,2})/i);
     const subtotal = subtotalMatch ? parseFloat(subtotalMatch[1].replace(/,/g, '')) : 0;
 
-    const ivaMatch = text.match(/IVA:\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
+    const ivaMatch = text.match(/(?:IVA|I\.V\.A\.|Iva|iva)[:\s]*\$?\s*([0-9,]+\.?\d{0,2})/i);
     const iva = ivaMatch ? parseFloat(ivaMatch[1].replace(/,/g, '')) : 0;
 
     const totalMatch = text.match(/Total:\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
