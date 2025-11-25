@@ -88,11 +88,20 @@ function parseInvoiceData(text, filename) {
         }
     }
 
-    // Extract agent - Pattern: "Agente: 09 - TEODORO" or just "TEODORO"
+    // Extract agent - Use fixed list of known agents
     let agent = null;
-    const agenteMatch = text.match(/Agente:[\s\S]{0,100}?(\d+)\s*-\s*([A-Z][A-Z\s]+)/i);
-    if (agenteMatch) {
-        agent = agenteMatch[2].trim();
+    const knownAgents = ['MIGUEL', 'ANDRES', 'VALERIA', 'HIPOLITO', 'JUAN', 'CESAR', 'TEODORO', 'HUMBERTO'];
+
+    // Search for any of the known agents after "Agente:"
+    const agenteSection = text.match(/Agente:[\s\S]{0,100}/i);
+    if (agenteSection) {
+        const sectionText = agenteSection[0].toUpperCase();
+        for (const agentName of knownAgents) {
+            if (sectionText.includes(agentName)) {
+                agent = agentName.charAt(0) + agentName.slice(1).toLowerCase(); // Capitalize first letter
+                break;
+            }
+        }
     }
 
     // Extract client - Pattern: "Cliente: 9374 - ALMA ANGELICA SANCHEZ ROSAS"
@@ -112,15 +121,19 @@ function parseInvoiceData(text, filename) {
         }
     }
 
-    // Extract amounts - More flexible patterns
-    const subtotalMatch = text.match(/(?:Subtotal|SUBTOTAL|Sub-total|Sub total)[:\s]*\n?\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
-    const subtotal = subtotalMatch ? parseFloat(subtotalMatch[1].replace(/,/g, '')) : 0;
+    // Extract TOTAL first, then calculate subtotal and IVA
+    // IVA in Mexico is 16%, so: Total = Subtotal * 1.16
+    const totalMatch = text.match(/(?:Total|TOTAL)[:\s]*\n?\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
+    let total = 0;
+    let subtotal = 0;
+    let iva = 0;
 
-    const ivaMatch = text.match(/(?:IVA|I\.V\.A\.|Iva|iva)[:\s]*\n?\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
-    const iva = ivaMatch ? parseFloat(ivaMatch[1].replace(/,/g, '')) : 0;
-
-    const totalMatch = text.match(/(?:Total|TOTAL)[:\s]*\$?\s*([0-9,]+\.?\d{0,2})/i);
-    const total = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : subtotal + iva;
+    if (totalMatch) {
+        total = parseFloat(totalMatch[1].replace(/,/g, ''));
+        // Calculate subtotal and IVA from total
+        subtotal = total / 1.16;
+        iva = total - subtotal;
+    }
 
     return {
         invoice_number: invoiceNumber || '',
@@ -128,9 +141,9 @@ function parseInvoiceData(text, filename) {
         agent: agent || '',
         client: client || '',
         rfc: rfc || '',
-        subtotal,
-        iva,
-        total
+        subtotal: Math.round(subtotal * 100) / 100, // Round to 2 decimals
+        iva: Math.round(iva * 100) / 100,
+        total: Math.round(total * 100) / 100
     };
 }
 
