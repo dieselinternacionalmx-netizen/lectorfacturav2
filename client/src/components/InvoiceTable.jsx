@@ -249,7 +249,7 @@ export default function InvoiceTable({ data, agentFilter, setAgentFilter, onData
                 size: 100,
             },
         ],
-        []
+        [selectedRows, filteredData]
     );
 
     const table = useReactTable({
