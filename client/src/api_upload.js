@@ -85,233 +85,211 @@ function parseInvoiceData(text, filename) {
             }
         } catch (e) {
             console.warn('Date parsing error:', e);
-        }
-    }
 
-    // Extract agent - Use fixed list of known agents
-    let agent = null;
-    const knownAgents = ['MIGUEL', 'ANDRES', 'VALERIA', 'HIPOLITO', 'JUAN', 'CESAR', 'TEODORO', 'HUMBERTO'];
-
-    // Search for any of the known agents after "Agente:"
-    const agenteSection = text.match(/Agente:[\s\S]{0,100}/i);
-    if (agenteSection) {
-        const sectionText = agenteSection[0].toUpperCase();
-        for (const agentName of knownAgents) {
-            if (sectionText.includes(agentName)) {
-                agent = agentName.charAt(0) + agentName.slice(1).toLowerCase(); // Capitalize first letter
-                break;
-            }
-        }
-    }
-
-    // Extract client - Pattern: "Cliente: 9374 - ALMA ANGELICA SANCHEZ ROSAS"
-    const clienteMatch = text.match(/Cliente:\s*\d+\s*-\s*([^\n\r]+)/i);
-    const client = clienteMatch ? clienteMatch[1].trim() : null;
-
-    // Extract RFC - Look for RFC after "Datos del Cliente" section
-    let rfc = null;
-    const rfcMatch = text.match(/Datos del Cliente:[\s\S]{0,300}RFC:\s*([A-Z0-9]{12,13})/i);
-    if (rfcMatch) {
-        rfc = rfcMatch[1].trim();
-    } else {
-        // Fallback: Generic RFC search
-        const genericRfcMatch = text.match(/RFC:\s*([A-Z0-9]{12,13})/i);
-        if (genericRfcMatch) {
-            rfc = genericRfcMatch[1].trim();
-        }
-    }
-
-    // Extract TOTAL first, then calculate subtotal and IVA
-    // IVA in Mexico is 16%, so: Total = Subtotal * 1.16
-    const totalMatch = text.match(/(?:Total|TOTAL)[:\s]*\n?\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
-    let total = 0;
-    let subtotal = 0;
-    let iva = 0;
-
-    if (totalMatch) {
-        total = parseFloat(totalMatch[1].replace(/,/g, ''));
-        // Calculate subtotal and IVA from total
-        subtotal = total / 1.16;
-        iva = total - subtotal;
-    }
-
-    return {
-        invoice_number: invoiceNumber || '',
-        date: date || '',
-        agent: agent || '',
-        client: client || '',
-        rfc: rfc || '',
-        subtotal: Math.round(subtotal * 100) / 100, // Round to 2 decimals
-        iva: Math.round(iva * 100) / 100,
-        total: Math.round(total * 100) / 100
-    };
-}
-
-/**
- * Parse bank transactions from text
- */
-function parseBankTransactions(text) {
-    const transactions = [];
-    const lines = text.split('\n');
-
-    for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (!trimmedLine) continue;
-
-        // Date
-        const dateMatch = trimmedLine.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
-        if (!dateMatch) continue;
-
-        // Convert DD/MM/YYYY to YYYY-MM-DD
-        const [day, month, year] = dateMatch[1].split('/');
-        const date = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-
-        // Description
-        const descMatch = trimmedLine.match(/(SPEI|TRANSFERENCIA|DEPOSITO)[^\$]*/i);
-        const description = descMatch ? descMatch[0].trim() : '';
-
-        // Amount
-        const amountMatch = trimmedLine.match(/\$\s*([0-9,]+\.?\d{0,2})/);
-        const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
-
-        if (amount > 0) {
-            // Beneficiary
-            const benefMatch = trimmedLine.match(/(?:BENEFICIARIO|BENEFICIARY)[:\s]+([^\n]+)/i);
-            const beneficiary = benefMatch ? benefMatch[1].trim() : null;
-
-            // Tracking Key
-            const trackingMatch = trimmedLine.match(/(?:CLAVE|TRACKING|KEY)[:\s]+([A-Z0-9]+)/i);
-            const tracking_key = trackingMatch ? trackingMatch[1].trim() : null;
-
-            // Agent inference
-            const agentPatterns = ['ANDRES', 'JUAN DIOS', 'JUAN_DIOS', 'CARLOS', 'MARIA'];
-            let agent = null;
-            const searchText = (description + ' ' + (beneficiary || '')).toUpperCase();
-            for (const pattern of agentPatterns) {
-                if (searchText.includes(pattern)) {
-                    agent = pattern.replace('_', ' ');
-                    break;
+            // Extract RFC - Look for RFC after "Datos del Cliente" section
+            let rfc = null;
+            const rfcMatch = text.match(/Datos del Cliente:[\s\S]{0,300}RFC:\s*([A-Z0-9]{12,13})/i);
+            if (rfcMatch) {
+                rfc = rfcMatch[1].trim();
+            } else {
+                // Fallback: Generic RFC search
+                const genericRfcMatch = text.match(/RFC:\s*([A-Z0-9]{12,13})/i);
+                if (genericRfcMatch) {
+                    rfc = genericRfcMatch[1].trim();
                 }
             }
 
-            transactions.push({
-                date,
-                agent,
-                description,
-                amount,
-                beneficiary,
-                tracking_key,
-                associated_invoices: null
-            });
-        }
-    }
-    return transactions;
-}
+            // Extract TOTAL first, then calculate subtotal and IVA
+            // IVA in Mexico is 16%, so: Total = Subtotal * 1.16
+            const totalMatch = text.match(/(?:Total|TOTAL)[:\s]*\n?\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
+            let total = 0;
+            let subtotal = 0;
+            let iva = 0;
 
-/**
- * Upload and process invoice PDFs
- */
-export async function uploadInvoices(files) {
-    const results = [];
+            if (totalMatch) {
+                total = parseFloat(totalMatch[1].replace(/,/g, ''));
+                // Calculate subtotal and IVA from total
+                subtotal = total / 1.16;
+                iva = total - subtotal;
+            }
 
-    for (const file of files) {
-        try {
-            // 1. Upload to Storage
-            const fileName = `${Date.now()}_${file.name}`;
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('invoices')
-                .upload(`pdfs/${fileName}`, file, { contentType: 'application/pdf' });
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('invoices')
-                .getPublicUrl(`pdfs/${fileName}`);
-
-            // 2. Extract Text (Client-side)
-            const text = await extractTextFromPDF(file);
-
-            // 3. Parse Data
-            const invoiceData = parseInvoiceData(text, file.name);
-
-            // 4. Insert into DB
-            const { data: insertedData, error: insertError } = await supabase
-                .from('invoices')
-                .upsert({
-                    filename: file.name, // Use original filename for display
-                    invoice_number: invoiceData.invoice_number,
-                    date: invoiceData.date,
-                    agent: invoiceData.agent,
-                    client: invoiceData.client,
-                    rfc: invoiceData.rfc,
-                    subtotal: invoiceData.subtotal,
-                    iva: invoiceData.iva,
-                    total: invoiceData.total,
-                    raw_text: text,
-                    pdf_url: publicUrl
-                }, { onConflict: 'filename' })
-                .select();
-
-            if (insertError) throw insertError;
-
-            results.push({
-                success: true,
-                fileName: file.name,
-                data: insertedData
-            });
-
-        } catch (error) {
-            console.error('Error processing file:', file.name, error);
-            results.push({
-                success: false,
-                fileName: file.name,
-                error: error.message
-            });
-        }
-    }
-
-    return results;
-}
-
-/**
- * Upload and process bank deposits PDF
- */
-export async function uploadBankDeposits(file) {
-    try {
-        // 1. Upload to Storage
-        const fileName = `deposits_${Date.now()}.pdf`;
-        const { error: uploadError } = await supabase.storage
-            .from('invoices')
-            .upload(`bank/${fileName}`, file, { contentType: 'application/pdf' });
-
-        if (uploadError) throw uploadError;
-
-        // 2. Extract Text
-        const text = await extractTextFromPDF(file);
-
-        // 3. Parse Transactions
-        const transactions = parseBankTransactions(text);
-
-        if (transactions.length === 0) {
-            throw new Error('No se encontraron transacciones válidas en el PDF');
+            return {
+                invoice_number: invoiceNumber || '',
+                date: date || '',
+                agent: agent || '',
+                client: client || '',
+                rfc: rfc || '',
+                subtotal: Math.round(subtotal * 100) / 100, // Round to 2 decimals
+                iva: Math.round(iva * 100) / 100,
+                total: Math.round(total * 100) / 100
+            };
         }
 
-        // 4. Insert into DB
-        // Note: In a real app, we might want to check for duplicates
-        const { data: insertedData, error: insertError } = await supabase
-            .from('bank_transactions')
-            .insert(transactions)
-            .select();
+        /**
+         * Parse bank transactions from text
+         */
+        function parseBankTransactions(text) {
+            const transactions = [];
+            const lines = text.split('\n');
 
-        if (insertError) throw insertError;
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) continue;
 
-        return {
-            success: true,
-            count: transactions.length,
-            data: insertedData
-        };
+                // Date
+                const dateMatch = trimmedLine.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+                if (!dateMatch) continue;
 
-    } catch (error) {
-        throw new Error(`Error procesando depósitos: ${error.message}`);
-    }
-}
+                // Convert DD/MM/YYYY to YYYY-MM-DD
+                const [day, month, year] = dateMatch[1].split('/');
+                const date = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+
+                // Description
+                const descMatch = trimmedLine.match(/(SPEI|TRANSFERENCIA|DEPOSITO)[^\$]*/i);
+                const description = descMatch ? descMatch[0].trim() : '';
+
+                // Amount
+                const amountMatch = trimmedLine.match(/\$\s*([0-9,]+\.?\d{0,2})/);
+                const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
+
+                if (amount > 0) {
+                    // Beneficiary
+                    const benefMatch = trimmedLine.match(/(?:BENEFICIARIO|BENEFICIARY)[:\s]+([^\n]+)/i);
+                    const beneficiary = benefMatch ? benefMatch[1].trim() : null;
+
+                    // Tracking Key
+                    const trackingMatch = trimmedLine.match(/(?:CLAVE|TRACKING|KEY)[:\s]+([A-Z0-9]+)/i);
+                    const tracking_key = trackingMatch ? trackingMatch[1].trim() : null;
+
+                    // Agent inference
+                    const agentPatterns = ['ANDRES', 'JUAN DIOS', 'JUAN_DIOS', 'CARLOS', 'MARIA'];
+                    let agent = null;
+                    const searchText = (description + ' ' + (beneficiary || '')).toUpperCase();
+                    for (const pattern of agentPatterns) {
+                        if (searchText.includes(pattern)) {
+                            agent = pattern.replace('_', ' ');
+                            break;
+                        }
+                    }
+
+                    transactions.push({
+                        date,
+                        agent,
+                        description,
+                        amount,
+                        beneficiary,
+                        tracking_key,
+                        associated_invoices: null
+                    });
+                }
+            }
+            return transactions;
+        }
+
+        /**
+         * Upload and process invoice PDFs
+         */
+        export async function uploadInvoices(files) {
+            const results = [];
+
+            for (const file of files) {
+                try {
+                    // 1. Upload to Storage
+                    const fileName = `${Date.now()}_${file.name}`;
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('invoices')
+                        .upload(`pdfs/${fileName}`, file, { contentType: 'application/pdf' });
+
+                    if (uploadError) throw uploadError;
+
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('invoices')
+                        .getPublicUrl(`pdfs/${fileName}`);
+
+                    // 2. Extract Text (Client-side)
+                    const text = await extractTextFromPDF(file);
+
+                    // 3. Parse Data
+                    const invoiceData = parseInvoiceData(text, file.name);
+
+                    // 4. Insert into DB
+                    const { data: insertedData, error: insertError } = await supabase
+                        .from('invoices')
+                        .upsert({
+                            filename: file.name, // Use original filename for display
+                            invoice_number: invoiceData.invoice_number,
+                            date: invoiceData.date,
+                            agent: invoiceData.agent,
+                            client: invoiceData.client,
+                            rfc: invoiceData.rfc,
+                            subtotal: invoiceData.subtotal,
+                            iva: invoiceData.iva,
+                            total: invoiceData.total,
+                            raw_text: text,
+                            pdf_url: publicUrl
+                        }, { onConflict: 'filename' })
+                        .select();
+
+                    if (insertError) throw insertError;
+
+                    results.push({
+                        success: true,
+                        fileName: file.name,
+                        data: insertedData
+                    });
+
+                } catch (error) {
+                    console.error('Error processing file:', file.name, error);
+                    results.push({
+                        success: false,
+                        fileName: file.name,
+                        error: error.message
+                    });
+                }
+            }
+
+            return results;
+        }
+
+        /**
+         * Upload and process bank deposits PDF
+         */
+        export async function uploadBankDeposits(file) {
+            try {
+                // 1. Upload to Storage
+                const fileName = `deposits_${Date.now()}.pdf`;
+                const { error: uploadError } = await supabase.storage
+                    .from('invoices')
+                    .upload(`bank/${fileName}`, file, { contentType: 'application/pdf' });
+
+                if (uploadError) throw uploadError;
+
+                // 2. Extract Text
+                const text = await extractTextFromPDF(file);
+
+                // 3. Parse Transactions
+                const transactions = parseBankTransactions(text);
+
+                if (transactions.length === 0) {
+                    throw new Error('No se encontraron transacciones válidas en el PDF');
+                }
+
+                // 4. Insert into DB
+                // Note: In a real app, we might want to check for duplicates
+                const { data: insertedData, error: insertError } = await supabase
+                    .from('bank_transactions')
+                    .insert(transactions)
+                    .select();
+
+                if (insertError) throw insertError;
+
+                return {
+                    success: true,
+                    count: transactions.length,
+                    data: insertedData
+                };
+
+            } catch (error) {
+                throw new Error(`Error procesando depósitos: ${error.message}`);
+            }
+        }
