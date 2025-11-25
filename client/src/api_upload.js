@@ -107,11 +107,30 @@ function parseInvoiceData(text, filename) {
     } else {
         // Fallback: Generic RFC search
         const genericRfcMatch = text.match(/RFC:\s*([A-Z0-9]{12,13})/i);
+        if (genericRfcMatch) {
+            rfc = genericRfcMatch[1].trim();
+        }
+    }
+
+    // Extract amounts - More flexible patterns
+    const subtotalMatch = text.match(/(?:Subtotal|SUBTOTAL|Sub-total|Sub total)[:\s]*\$?\s*([0-9,]+\.?\d{0,2})/i);
+    const subtotal = subtotalMatch ? parseFloat(subtotalMatch[1].replace(/,/g, '')) : 0;
+
+    const ivaMatch = text.match(/(?:IVA|I\.V\.A\.|Iva|iva)[:\s]*\$?\s*([0-9,]+\.?\d{0,2})/i);
+    const iva = ivaMatch ? parseFloat(ivaMatch[1].replace(/,/g, '')) : 0;
+
+    const totalMatch = text.match(/(?:Total|TOTAL)[:\s]*\$?\s*([0-9,]+\.?\d{0,2})/i);
+    const total = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : subtotal + iva;
+
+    return {
+        invoice_number: invoiceNumber || '',
+        date: date || '',
+        agent: agent || '',
         client: client || '',
-            rfc: rfc || '',
-                subtotal,
-                iva,
-                total
+        rfc: rfc || '',
+        subtotal,
+        iva,
+        total
     };
 }
 
