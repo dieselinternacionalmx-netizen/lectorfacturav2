@@ -186,7 +186,7 @@ export async function uploadInvoices(files) {
             // 4. Insert into DB
             const { data: insertedData, error: insertError } = await supabase
                 .from('invoices')
-                .insert({
+                .upsert({
                     filename: file.name, // Use original filename for display
                     invoice_number: invoiceData.invoice_number,
                     date: invoiceData.date,
@@ -198,7 +198,7 @@ export async function uploadInvoices(files) {
                     total: invoiceData.total,
                     raw_text: text,
                     pdf_url: publicUrl
-                })
+                }, { onConflict: 'filename' })
                 .select();
 
             if (insertError) throw insertError;

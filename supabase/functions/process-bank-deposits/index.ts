@@ -1,5 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import * as pdfjs from 'https://esm.sh/pdfjs-dist@3.11.174'
+
+// Configurar worker para pdfjs
+const workerUrl = 'https://esm.sh/pdfjs-dist@3.11.174/build/pdf.worker.min.js'
+pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -23,10 +28,16 @@ serve(async (req) => {
         const pdfResponse = await fetch(pdfUrl)
         const pdfBuffer = await pdfResponse.arrayBuffer()
 
-        // Extract text
-        const pdfParse = await import('https://esm.sh/pdf-parse@1.1.1')
-        const data = await pdfParse.default(Buffer.from(pdfBuffer))
-        const text = data.text
+        // Extract text using pdfjs-dist
+        const doc = await pdfjs.getDocument({ data: new Uint8Array(pdfBuffer) }).promise
+        let text = ''
+
+        for (let i = 1; i <= doc.numPages; i++) {
+            const page = await doc.getPage(i)
+            const content = await page.getTextContent()
+            const strings = content.items.map((item: any) => item.str)
+            text += strings.join(' ') + '\n'
+        }
 
         // Extract bank transactions
         const transactions = extractBankTransactions(text)
@@ -67,9 +78,6 @@ serve(async (req) => {
 function extractBankTransactions(text: string) {
     const transactions = []
     const lines = text.split('\n')
-
-    // Pattern for bank transactions (adjust based on your bank format)
-    // Example: "20/11/2025  SPEI RECIBIDO  $11,248.52  BENEFICIARIO: EMPRESA SA  CLAVE: 123456"
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim()

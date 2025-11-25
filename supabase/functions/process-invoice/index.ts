@@ -1,5 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import * as pdfjs from 'https://esm.sh/pdfjs-dist@3.11.174'
+
+// Configurar worker para pdfjs
+const workerUrl = 'https://esm.sh/pdfjs-dist@3.11.174/build/pdf.worker.min.js'
+pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -7,7 +12,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-    // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -15,22 +19,27 @@ serve(async (req) => {
     try {
         const { fileName, pdfUrl } = await req.json()
 
-        // Create Supabase client
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        // Download PDF from storage
+        // Download PDF
         const pdfResponse = await fetch(pdfUrl)
         const pdfBuffer = await pdfResponse.arrayBuffer()
 
-        // Extract text from PDF using pdf-parse
-        const pdfParse = await import('https://esm.sh/pdf-parse@1.1.1')
-        const data = await pdfParse.default(Buffer.from(pdfBuffer))
-        const text = data.text
+        // Extract text using pdfjs-dist
+        const doc = await pdfjs.getDocument({ data: new Uint8Array(pdfBuffer) }).promise
+        let text = ''
 
-        // Extract invoice data using regex patterns
+        for (let i = 1; i <= doc.numPages; i++) {
+            const page = await doc.getPage(i)
+            const content = await page.getTextContent()
+            const strings = content.items.map((item: any) => item.str)
+            text += strings.join(' ') + '\n'
+        }
+
+        // Extract invoice data
         const invoiceData = extractInvoiceData(text, fileName)
 
         // Insert into database
