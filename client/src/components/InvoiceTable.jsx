@@ -156,7 +156,7 @@ export default function InvoiceTable({ data, agentFilter, setAgentFilter, onData
             {
                 header: 'Cliente',
                 accessorKey: 'client',
-                cell: info => <span className="text-secondary">{info.getValue()}</span>,
+                cell: info => <span className="text-secondary">{info.getValue() || ''}</span>,
                 size: 250,
             },
             {
