@@ -57,3 +57,19 @@ export const updateBankTransaction = async (id, data) => {
     const response = await api.put(`/bank-transactions/${id}`, data);
     return response.data;
 };
+
+export const deleteInvoices = async (invoiceIds) => {
+    if (isLocal) {
+        // Local: Not implemented for SQLite
+        throw new Error('Delete not supported in local mode');
+    } else {
+        // Use Supabase directly (for Vercel deployment)
+        const { error } = await supabase
+            .from('invoices')
+            .delete()
+            .in('id', invoiceIds);
+
+        if (error) throw error;
+        return { success: true, count: invoiceIds.length };
+    }
+};

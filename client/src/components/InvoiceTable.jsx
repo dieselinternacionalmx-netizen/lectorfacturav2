@@ -6,15 +6,18 @@ import {
     getFilteredRowModel,
     flexRender,
 } from '@tanstack/react-table';
-import { ArrowUpDown, Search, DollarSign } from 'lucide-react';
+import { ArrowUpDown, Search, DollarSign, Trash2 } from 'lucide-react';
 import InvoiceStatusBadge from './InvoiceStatusBadge';
 import InvoicePaymentModal from './InvoicePaymentModal';
+import { deleteInvoices } from '../api';
 
 export default function InvoiceTable({ data, agentFilter, setAgentFilter, onDataUpdate }) {
     const [sorting, setSorting] = useState([]);
     const [globalFilter, setGlobalFilter] = useState('');
     const [monthFilter, setMonthFilter] = useState('');
     const [paymentModalInvoice, setPaymentModalInvoice] = useState(null);
+    const [selectedRows, setSelectedRows] = useState(new Set());
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Get unique agents for the dropdown
     const uniqueAgents = useMemo(() => {
@@ -71,8 +74,70 @@ export default function InvoiceTable({ data, agentFilter, setAgentFilter, onData
         return colors[Math.abs(hash) % colors.length];
     };
 
+    const handleDeleteSelected = async () => {
+        if (selectedRows.size === 0) return;
+
+        const confirmed = window.confirm(
+            `¿Estás seguro de que deseas eliminar ${selectedRows.size} factura(s)? Esta acción no se puede deshacer.`
+        );
+
+        if (!confirmed) return;
+
+        setIsDeleting(true);
+        try {
+            await deleteInvoices(Array.from(selectedRows));
+            setSelectedRows(new Set());
+            if (onDataUpdate) onDataUpdate();
+        } catch (error) {
+            console.error('Error deleting invoices:', error);
+            alert(`Error al eliminar facturas: ${error.message}`);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const toggleRowSelection = (rowId) => {
+        setSelectedRows(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(rowId)) {
+                newSet.delete(rowId);
+            } else {
+                newSet.add(rowId);
+            }
+            return newSet;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedRows.size === filteredData.length) {
+            setSelectedRows(new Set());
+        } else {
+            setSelectedRows(new Set(filteredData.map(row => row.id)));
+        }
+    };
+
     const columns = useMemo(
         () => [
+            {
+                id: 'select',
+                header: () => (
+                    <input
+                        type="checkbox"
+                        checked={selectedRows.size === filteredData.length && filteredData.length > 0}
+                        onChange={toggleSelectAll}
+                        className="cursor-pointer"
+                    />
+                ),
+                cell: ({ row }) => (
+                    <input
+                        type="checkbox"
+                        checked={selectedRows.has(row.original.id)}
+                        onChange={() => toggleRowSelection(row.original.id)}
+                        className="cursor-pointer"
+                    />
+                ),
+                size: 50,
+            },
             {
                 header: 'Archivo',
                 accessorKey: 'filename',
@@ -281,6 +346,17 @@ export default function InvoiceTable({ data, agentFilter, setAgentFilter, onData
                     <button onClick={handleExport} className="export-button">
                         Exportar CSV
                     </button>
+
+                    {selectedRows.size > 0 && (
+                        <button
+                            onClick={handleDeleteSelected}
+                            disabled={isDeleting}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2 font-semibold disabled:opacity-50"
+                        >
+                            <Trash2 size={18} />
+                            {isDeleting ? 'Eliminando...' : `Eliminar ${selectedRows.size}`}
+                        </button>
+                    )}
                 </div>
             </div>
 
