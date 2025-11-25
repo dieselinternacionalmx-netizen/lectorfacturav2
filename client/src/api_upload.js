@@ -34,13 +34,13 @@ async function extractTextFromPDF(file) {
 function parseInvoiceData(text, filename) {
     // Extract invoice number from PDF text first
     let invoiceNumber = null;
-    
+
     // Pattern 1: "Folio: A 30656" or "Folio: C 28295" -> extract just the numbers
     const folioMatch = text.match(/Folio:\s*[A-Z]?\s*(\d+)/i);
     if (folioMatch) {
         invoiceNumber = folioMatch[1];
     }
-    
+
     // Fallback: Try to extract from filename if not found in text
     if (!invoiceNumber) {
         const cfdiMatch = filename.match(/[_A](\d{5,})/);
@@ -120,14 +120,14 @@ function parseInvoiceData(text, filename) {
     const iva = ivaMatch ? parseFloat(ivaMatch[1].replace(/,/g, '')) : 0;
 
     const totalMatch = text.match(/Total:\s*\$?\s*([0-9,]+\.?\d{0,2})/i);
-    const total = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) :  subtotal + iva;
+    const total = totalMatch ? parseFloat(totalMatch[1].replace(/,/g, '')) : subtotal + iva;
 
     return {
-        invoice_number: invoiceNumber,
-        date,
-        agent,
-        client,
-        rfc,
+        invoice_number: invoiceNumber || '',
+        date: date || '',
+        agent: agent || '',
+        client: client || '',
+        rfc: rfc || '',
         subtotal,
         iva,
         total
